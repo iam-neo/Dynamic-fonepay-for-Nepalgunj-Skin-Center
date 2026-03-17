@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building the Dynamic Fonepay QR Web App</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <nav class="glass-nav">
+        <div class="nav-content">
+            <div class="logo">
+                <span class="glow-text">fone</span><span class="accent-text">pay</span> <span
+                    style="font-size: 1rem; color: #a1a1aa; font-weight: 400; letter-spacing: 1px;">| Engineering</span>
+            </div>
+            <button id="theme-toggle" class="theme-toggle">
+                <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="display: none;">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="reading-progress">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <span class="tag">Case Study</span>
+            <h1 class="hero-title">Engineering a Dynamic EMVCo Payment QR Generator</h1>
+            <p class="hero-subtitle">How we converted a static HTML prototype into a highly scalable,
+                glassmorphism-themed React application capable of auto-filling Fonepay amounts instantly.</p>
+            <div class="author-meta">
+                <div class="avatar">👨‍💻</div>
+                <div class="author-info">
+                    <strong>Nirmal</strong>
+                    <span>Designed & Developed</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-bg"></div>
+    </header>
+
+    <main class="article-container">
+
+        <aside class="sidebar">
+            <div class="toc-container">
+                <h3>Table of Contents</h3>
+                <ul id="toc">
+                    <li><a href="#introduction">1. The Problem Space</a></li>
+                    <li><a href="#tech-stack">2. The Tech Stack</a></li>
+                    <li><a href="#emvco-protocol">3. Decoding the EMVCo Protocol</a></li>
+                    <li><a href="#crc16-algorithm">4. Checksum Geometry (CRC16)</a></li>
+                    <li><a href="#ui-redesign">5. The Glassmorphism Redesign</a></li>
+                    <li><a href="#deployment">6. Continuous Deployment</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <article class="content">
+
+            <section id="introduction">
+                <h2>1. The Problem Space</h2>
+                <p>Standard printed QR codes found at Nepali merchant locations (like Nepalgunj Skin Center) contain
+                    static Fonepay/EMVCo payloads. When scanned by a banking application (e.g., eSewa, Global Smart,
+                    Khalti), the user must manually enter the correct payment amount.</p>
+                <p>Our objective was to build a secure, dynamic QR generator that dynamically modifies the payload to
+                    embed an exact decimal amount. This ensures precision, eliminates manual entry errors by the
+                    customer, and accelerates checkout times.</p>
+            </section>
+
+            <section id="tech-stack">
+                <h2>2. The Tech Stack</h2>
+                <p>We completely migrated the legacy single-file HTML version to a modern Single Page Application (SPA)
+                    architecture:</p>
+                <ul>
+                    <li><strong>Framework:</strong> React 18 for component-based logic and state management.</li>
+                    <li><strong>Build Tool:</strong> Vite 8, chosen for lightning-fast Hot Module Replacement (HMR) and
+                        optimized build times.</li>
+                    <li><strong>Styling:</strong> Tailwind CSS v4, allowing us to build a rich, complex glassmorphism UI
+                        entirely with utility classes.</li>
+                    <li><strong>QR Generation:</strong> <code>qrcode.react</code> to handle high-error-correction canvas
+                        drawing, allowing us to embed the company logo perfectly in the center.</li>
+                </ul>
+            </section>
+
+            <section id="emvco-protocol">
+                <h2>3. Decoding the EMVCo Protocol</h2>
+                <p>Fonepay utilizes the EMVCo QR code specification. The payload is structured as a series of
+                    <strong>Tag-Length-Value (TLV)</strong> nodes.</p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                        <span class="code-title">generateQRString.js (Snippet)</span>
+                    </div>
+                    <pre><code class="language-js">
+// Tag 54 represents the Transaction Amount
+const formatTag = (id, value) => {
+    const len = value.length.toString().padStart(2, '0');
+    return `${id}${len}${value}`;
+};
+
+// Generating the dynamic part of the payload
+let amountStr = formatTag("54", amount.toFixed(2));
+                    </code></pre>
+                </div>
+                <p>To inject the amount dynamically, we dissect the static string, remove any existing Tag 54 nodes,
+                    construct a new Tag 54 using the user's target amount (e.g., <code>540510.00</code>), and inject it
+                    right before Tag 63 (the Checksum tag).</p>
+            </section>
+
+            <section id="crc16-algorithm">
+                <h2>4. Checksum Geometry (CRC16-CCITT)</h2>
+                <p>The most complex part of a dynamic EMVCo QR is the Checksum (Tag 63). If you modify a single byte
+                    (like the amount or remarks), the banking app will reject the entire QR code unless the 4-character
+                    HEX checksum is perfectly recalculated.</p>
+                <p>We wrote a robust, zero-dependency CRC16-CCITT algorithm in JavaScript to handle this dynamically on
+                    the client side:</p>
+
+                <div class="info-alert">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <strong>Polynomial 0x1021:</strong> The algorithm seeds with <code>0xffff</code> and XORs each byte,
+                    shifting 8 bits at a time through the standard CCITT polynomial.
+                </div>
+            </section>
+
+            <section id="ui-redesign">
+                <h2>5. The Glassmorphism Redesign</h2>
+                <p>Usability goes hand-in-hand with aesthetics. Instead of standard flat tables and white backgrounds,
+                    we engineered a dark, premium aesthetic.</p>
+                <div class="image-gallery">
+                    <div class="feature-card">
+                        <h3>Animated Mesh Gradient</h3>
+                        <p>We layered blurred nodes of rose and indigo over a deep dark background using CSS
+                            <code>mix-blend-mode: screen</code> to create a glowing web application layer.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Translucent Components</h3>
+                        <p>Using Tailwind's <code>backdrop-blur-2xl</code> and <code>bg-white/5</code>, our forms and
+                            cards look like frosted glass floating over the animated background.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="deployment">
+                <h2>6. Continuous Deployment</h2>
+                <p>We mapped the project specifically for <strong>Vercel</strong> edge deployments. By using Vite and
+                    defining client-side routing rewrites inside <code>vercel.json</code>, the site instantly goes live
+                    whenever code is pushed to the GitHub <code>master</code> branch.</p>
+                <p>We also implemented an <code>.npmrc</code> configuration to bypass strict peer dependency checks
+                    between Vite 8 and Tailwind ecosystem tools, ensuring robust remote builds.</p>
+            </section>
+
+        </article>
+    </main>
+
+    <footer>
+        <p>Architected and Developed by <a href="https://github.com/iam-neo">Nirmal</a></p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
