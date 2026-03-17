@@ -73,6 +73,7 @@
                     <li><a href="#crc16-algorithm">4. Checksum Geometry (CRC16)</a></li>
                     <li><a href="#ui-redesign">5. The Glassmorphism Redesign</a></li>
                     <li><a href="#deployment">6. Continuous Deployment</a></li>
+                    <li><a href="#how-it-works">7. How the Code Works</a></li>
                 </ul>
             </div>
         </aside>
@@ -107,7 +108,8 @@
             <section id="emvco-protocol">
                 <h2>3. Decoding the EMVCo Protocol</h2>
                 <p>Fonepay utilizes the EMVCo QR code specification. The payload is structured as a series of
-                    <strong>Tag-Length-Value (TLV)</strong> nodes.</p>
+                    <strong>Tag-Length-Value (TLV)</strong> nodes.
+                </p>
                 <div class="code-block">
                     <div class="code-header">
                         <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
@@ -157,7 +159,8 @@ let amountStr = formatTag("54", amount.toFixed(2));
                     <div class="feature-card">
                         <h3>Animated Mesh Gradient</h3>
                         <p>We layered blurred nodes of rose and indigo over a deep dark background using CSS
-                            <code>mix-blend-mode: screen</code> to create a glowing web application layer.</p>
+                            <code>mix-blend-mode: screen</code> to create a glowing web application layer.
+                        </p>
                     </div>
                     <div class="feature-card">
                         <h3>Translucent Components</h3>
@@ -174,6 +177,53 @@ let amountStr = formatTag("54", amount.toFixed(2));
                     whenever code is pushed to the GitHub <code>master</code> branch.</p>
                 <p>We also implemented an <code>.npmrc</code> configuration to bypass strict peer dependency checks
                     between Vite 8 and Tailwind ecosystem tools, ensuring robust remote builds.</p>
+            </section>
+
+            <section id="how-it-works">
+                <h2>7. How the Code Works</h2>
+                <p>The application is built on a modular React architecture that strictly separates presentation from
+                    complex EMVCo payment logic. Here is the lifecycle of a QR code generation within our app:</p>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--primary);">Data Flow & Component
+                    Architecture</h3>
+
+                <div class="code-block" style="margin-top: 1rem;">
+                    <div class="code-header">
+                        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                        <span class="code-title">Component Tree</span>
+                    </div>
+                    <pre><code class="language-txt" style="color: var(--text-color);">
+App.jsx (Main Container & State Holder)
+ ├── Header.jsx (Static text & Logos)
+ ├── MerchantCard.jsx (Merchant Name & Terminal Details)
+ ├── QRForm.jsx (User Inputs)
+ │    └── Triggers onGenerate(amount, remarks)
+ └── QRDisplay.jsx (QR Canvas & Data Viewer)
+      ├── Renders <QRCodeCanvas />
+      └── Displays raw string, Amount Tag, Checksum
+                    </code></pre>
+                </div>
+
+                <ul>
+                    <li><strong>1. State Management (<code>App.jsx</code>)</strong>: The root component holds a single
+                        state variable: <code>qrData</code>. When a user interacts with the generator,
+                        <code>App.jsx</code> passes the updated payload down to the display component.</li>
+                    <li><strong>2. User Input (<code>QRForm.jsx</code>)</strong>: This component handles controlled
+                        inputs for the payment amount and optional remarks. Upon submission, it sanitizes the number and
+                        triggers an <code>onGenerate</code> callback function passed from the parent
+                        <code>App.jsx</code>.</li>
+                    <li><strong>3. Payload Generation (<code>utils/generateQRString.js</code>)</strong>: This is the
+                        brain of the app. It takes the float amount and remarks, constructs missing TLV tags (Tag 54 for
+                        Amount, Tag 08 for Remarks), and splices them into the massive static EMVCo string.</li>
+                    <li><strong>4. Checksum Calculation (<code>utils/crc16.js</code>)</strong>: Before the final string
+                        is returned, the app passes the newly constructed string (minus the final checksum) through our
+                        custom CRC16-CCITT algorithm to generate a mathematically sound 4-digit Hex verification
+                        signature.</li>
+                    <li><strong>5. Rendering (<code>QRDisplay.jsx</code>)</strong>: Finally, the new <code>qrData</code>
+                        object is passed into <code>QRDisplay</code>. We use <code>qrcode.react</code> to draw a Level-H
+                        (High Error Correction) canvas, which is dense enough to allow us to safely overlay the
+                        `logo.png` image directly over the center data modules without breaking scannability.</li>
+                </ul>
             </section>
 
         </article>
