@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nepalgunj Skin Center - Dynamic Amount QR</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 480px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .logo-text {
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        .logo-text span {
+            color: #ffd700;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .merchant-card {
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            background: #f7fafc;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .qr-section {
+            display: none;
+            background: #f7fafc;
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .qr-section.active {
+            display: block;
+        }
+
+        #qrcode {
+            margin: 0 auto 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .info-box {
+            margin-top: 15px;
+            padding: 15px;
+            background: #c6f6d5;
+            border-radius: 8px;
+            color: #22543d;
+            font-size: 0.9rem;
+        }
+
+        .raw-string {
+            margin-top: 15px;
+            padding: 10px;
+            background: #edf2f7;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.65rem;
+            word-break: break-all;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-text">fone<span>pay</span></div>
+            <div style="opacity: 0.9; margin-top: 5px;">Auto-Fill Amount QR</div>
+        </div>
+
+        <div class="content">
+            <div class="merchant-card">
+                <h3 style="color: #2d3748; margin-bottom: 5px;">NEPALGUNJ SKIN CENTER</h3>
+                <p style="color: #718096; font-size: 0.9rem;">Code: 2109020664 | Terminal: 497140</p>
+            </div>
+
+            <div class="input-group">
+                <label>Amount (NPR) - Will Auto-fill in App</label>
+                <input type="number" id="amount" placeholder="Enter amount" min="1" step="0.01">
+            </div>
+
+            <div class="input-group">
+                <label>Remarks (Optional)</label>
+                <input type="text" id="remarks" placeholder="e.g., Consultation Fee" value="Payment">
+            </div>
+
+            <button class="generate-btn" onclick="generateQR()">Generate QR with Amount</button>
+
+            <div id="qrSection" class="qr-section">
+                <div id="qrcode"></div>
+                <div class="info-box">
+                    ✅ <strong>Amount will auto-populate</strong> when scanned in banking app
+                </div>
+                <div class="raw-string" id="rawData"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CRC16-CCITT calculation
+        function crc16(str) {
+            let crc = 0xFFFF;
+            for (let i = 0; i < str.length; i++) {
+                crc ^= str.charCodeAt(i) << 8;
+                for (let j = 0; j < 8; j++) {
+                    crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+                }
+            }
+            return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+        }
+
+        function generateQR() {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const remarks = document.getElementById('remarks').value || 'Payment';
+
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+
+            // Build QR string based on your WORKING static QR but with DYNAMIC modifications:
+            // 1. Change 010211 (Static) to 010212 (Dynamic)
+            // 2. Add Tag 54 for amount
+
+            let qr = "000201"; // Payload Format Indicator
+
+            // CRITICAL: Change from 11 (Static) to 12 (Dynamic) for amount auto-fill
+            qr += "010212";
+
+            // Tag 37: Keep exact format from your working QR (might be encrypted/signed)
+            // Your working QR has: 37139105240052044
+            qr += "37139105240052044";
+
+            // Tag 26: FonePay data (from your working QR structure)
+            // 0011fonepay.com + 01102109020664 + 0206497140
+            qr += "26390011fonepay.com011021090206640206497140";
+
+            // Tag 52: Merchant Category Code
+            qr += "52048012";
+
+            // Tag 53: Currency Code (524 = NPR)
+            qr += "5303524";
+
+            // CRITICAL: Add Tag 54 for Transaction Amount (this enables auto-fill)
+            const amtStr = amount.toFixed(2);
+            qr += "54" + amtStr.length.toString().padStart(2, '0') + amtStr;
+
+            // Tag 58: Country Code
+            qr += "5802NP";
+
+            // Tag 59: Merchant Name
+            qr += "5921NEPALGUNJ SKIN CENTER";
+
+            // Tag 60: Merchant City
+            qr += "6005Banke";
+
+            // Tag 62: Additional Data
+            const txnId = "TXN" + Date.now().toString().slice(-6);
+            const addData = "07" + "06" + "497140" + "02" + txnId.length.toString().padStart(2, '0') + txnId + "08" + remarks.length.toString().padStart(2, '0') + remarks;
+            qr += "62" + addData.length.toString().padStart(2, '0') + addData;
+
+            // Tag 63: CRC
+            qr += "6304";
+            const crc = crc16(qr);
+            qr += crc;
+
+            // Generate QR
+            document.getElementById('qrcode').innerHTML = '';
+            new QRCode(document.getElementById('qrcode'), {
+                text: qr,
+                width: 250,
+                height: 250,
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('rawData').innerHTML = `
+                <strong>QR String:</strong><br>
+                ${qr}<br><br>
+                <strong>Changes made:</strong><br>
+                • 010212 (Dynamic instead of Static)<br>
+                • Added 54${amtStr.length.toString().padStart(2, '0')}${amtStr} (Amount Tag)<br>
+                • CRC: ${crc}
+            `;
+
+            document.getElementById('qrSection').classList.add('active');
+
+            console.log('Generated Dynamic QR:', qr);
+        }
+    </script>
+</body>
+
+</html>
