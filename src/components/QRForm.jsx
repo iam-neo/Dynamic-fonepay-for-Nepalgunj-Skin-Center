@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 export default function QRForm({ onGenerate }) {
     const [amount, setAmount] = useState('');
-    const [remarks, setRemarks] = useState('Payment');
+    const [remarks, setRemarks] = useState('');
 
     const handleSubmit = () => {
         const parsed = parseFloat(amount);

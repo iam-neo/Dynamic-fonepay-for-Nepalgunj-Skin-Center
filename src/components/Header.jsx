@@ -7,7 +7,7 @@ export default function Header() {
             </div>
             <div className="mt-2 text-rose-200/80 text-sm font-medium tracking-widest uppercase flex items-center justify-center gap-2">
                 <span className="w-8 h-[1px] bg-rose-500/50"></span>
-                Auto-Fill Amount
+                नेपाल राष्ट्र बैंकबाट अनुमति प्राप्त
                 <span className="w-8 h-[1px] bg-rose-500/50"></span>
             </div>
         </div>
