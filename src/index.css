@@ -2,22 +2,52 @@
 
 @import "tailwindcss";
 
-/* Custom animation for QR display */
+/* Custom animation for QR display & glowing effects */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(12px) scale(0.98);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
   }
 }
 
 @layer utilities {
   .animate-fade-in {
-    animation: fadeIn 0.4s ease-out;
+    animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .bg-mesh-gradient {
+    background: linear-gradient(-45deg, #09090b, #1e1b4b, #4c0519, #0f172a);
+    background-size: 400% 400%;
+    animation: gradientFlow 15s ease infinite;
+  }
+
+
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  }
+
+  .text-glow-accent {
+    text-shadow: 0 0 20px rgba(250, 204, 21, 0.6);
   }
 }
 
@@ -30,8 +60,10 @@
   }
 
   body {
-    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-color: #09090b;
+    color: #f8fafc;
   }
 }
