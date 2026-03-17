@@ -1,10 +1,15 @@
 export default function Header() {
     return (
-        <div className="bg-gradient-to-br from-red-600 to-red-800 text-white py-8 px-8 text-center rounded-t-3xl">
-            <div className="text-4xl font-extrabold tracking-tight">
-                fone<span className="text-yellow-400">pay</span>
+        <div className="bg-black/20 backdrop-blur-md border-b border-white/5 py-8 px-8 text-center sm:rounded-t-[2rem]">
+            <div className="text-[2.5rem] font-extrabold tracking-tight text-white flex items-center justify-center gap-1">
+                <span className="text-glow">fone</span>
+                <span className="text-yellow-400 text-glow-accent">pay</span>
             </div>
-            <div className="mt-1.5 opacity-90 text-sm">Auto-Fill Amount QR</div>
+            <div className="mt-2 text-rose-200/80 text-sm font-medium tracking-widest uppercase flex items-center justify-center gap-2">
+                <span className="w-8 h-[1px] bg-rose-500/50"></span>
+                Auto-Fill Amount
+                <span className="w-8 h-[1px] bg-rose-500/50"></span>
+            </div>
         </div>
     );
 }
