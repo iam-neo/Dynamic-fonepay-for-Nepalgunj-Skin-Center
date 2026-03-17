@@ -4,6 +4,8 @@ A React + Tailwind CSS web app that generates **Fonepay-compatible EMVCo QR code
 
 When scanned with any Nepali banking app, the QR auto-populates the exact payment amount — no manual entry needed by the payer.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2A%2Agithub.com%2Fyour-username%2Fyour-repo)
+
 ---
 
 ## ✨ Features
