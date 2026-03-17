@@ -17,6 +17,14 @@ export default function QRDisplay({ qrData }) {
                     size={220}
                     level="H"
                     includeMargin={false}
+                    imageSettings={{
+                        src: "/logo.png",
+                        x: undefined,
+                        y: undefined,
+                        height: 40,
+                        width: 40,
+                        excavate: true,
+                    }}
                     className="rounded-sm"
                 />
             </div>
