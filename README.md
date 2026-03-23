@@ -12,10 +12,11 @@ When scanned with any Nepali banking app, the QR auto-populates the exact paymen
 
 - **Dynamic Amount QR** — Tag `010212` (Dynamic) with Tag `54` for auto-fill
 - **CRC16-CCITT Checksum** — Accurate EMVCo-compliant checksum (Tag `63`)
-- **Instant Preview** — QR code renders live with `qrcode.react`
-- **Raw Payload Inspector** — View the full QR string and tag breakdown
+- **QR Popup Modal** — QR code appears in a glassmorphism overlay with smooth slide-up animation
+- **Quick-Fill Presets** — One-tap service buttons (Consultation, Hydrafacial, PRP, etc.) auto-fill amount & remarks
+- **Horizontally Scrollable Presets** — Swipe-friendly preset row for mobile users
 - **Custom Remarks** — Optional transaction reference/note
-- **Modern UI** — Gradient backgrounds, rounded cards, smooth animations
+- **Modern UI** — Gradient backgrounds, glassmorphism, rounded cards, smooth animations
 - **Responsive** — Mobile-first, works on all screen sizes
 
 ---
@@ -43,16 +44,16 @@ final/
 │   └── favicon.svg
 └── src/
     ├── main.jsx                  # React entry point
-    ├── index.css                 # Tailwind imports + custom animation
-    ├── App.jsx                   # Root component (state management)
+    ├── index.css                 # Tailwind imports + custom animations + modal styles
+    ├── App.jsx                   # Root component (state + QR modal management)
     ├── utils/
     │   ├── crc16.js              # CRC16-CCITT checksum function
     │   └── generateQRString.js   # EMVCo QR payload builder
     └── components/
         ├── Header.jsx            # Fonepay branded header
         ├── MerchantCard.jsx      # Merchant info card
-        ├── QRForm.jsx            # Amount & remarks form
-        └── QRDisplay.jsx         # QR image + raw data display
+        ├── QRForm.jsx            # Amount, remarks & quick-fill presets
+        └── QRDisplay.jsx         # QR code display (rendered in modal)
 ```
 
 ---
