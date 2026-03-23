@@ -7,11 +7,17 @@ import { generateQRString } from './utils/generateQRString';
 
 function App() {
   const [qrData, setQrData] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   const handleGenerate = (amount, remarks) => {
     const data = generateQRString(amount, remarks);
     setQrData(data);
+    setShowModal(true);
     console.log('Generated Dynamic QR:', data.qrString);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
   };
 
   return (
@@ -25,9 +31,22 @@ function App() {
         <div className="p-6 sm:p-8 pt-6">
           <MerchantCard />
           <QRForm onGenerate={handleGenerate} />
-          <QRDisplay qrData={qrData} />
         </div>
       </div>
+
+      {/* QR Modal Popup */}
+      {showModal && qrData && (
+        <div className="qr-modal-overlay" onClick={handleCloseModal}>
+          <div className="qr-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="qr-modal-close" onClick={handleCloseModal} title="Close">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <QRDisplay qrData={qrData} />
+          </div>
+        </div>
+      )}
 
       {/* Footer Area */}
       <div className="mt-8 text-white/50 text-sm font-medium z-10 flex items-center justify-center gap-2 animate-fade-in relative">
