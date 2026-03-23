@@ -54,6 +54,41 @@ export default function QRForm({ onGenerate }) {
                 />
             </div>
 
+            {/* Quick Fill Presets */}
+            <div>
+                <label className="block mb-2.5 text-rose-200/70 font-bold text-[0.65rem] uppercase tracking-[0.15em]">
+                    Quick Fill
+                </label>
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+                    {[
+                        { label: 'Consultation', amount: 500, remarks: 'Consultation Fee' },
+                        { label: 'B.Hydra', amount: 3000, remarks: 'Basic Hydrafacial' },
+                        { label: 'P.Hydra', amount: 5000, remarks: 'Professional Hydrafacial' },
+                        { label: 'D.Hydra', amount: 6500, remarks: 'Delux Hydrafacial' },
+                        { label: 'C.Peel', amount: 2500, remarks: 'Chemical Peel' },
+                        { label: 'PRP', amount: 5000, remarks: 'Vampire Facial' },
+                        { label: 'GFC', amount: 6000, remarks: 'GFC Therapy' },
+                        { label: 'Carbon', amount: 3500, remarks: 'Carbon Laser Peel' },
+                    ].map((preset) => (
+                        <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => {
+                                setAmount(String(preset.amount));
+                                setRemarks(preset.remarks);
+                            }}
+                            className={`px-3.5 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0
+                                ${Number(amount) === preset.amount && remarks === preset.remarks
+                                    ? 'bg-rose-500/30 border-rose-500/60 text-rose-200 shadow-[0_0_12px_rgba(225,29,72,0.25)]'
+                                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white/90'
+                                }`}
+                        >
+                            {preset.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* Generate Button */}
             <button
                 onClick={handleSubmit}
