@@ -15,6 +15,7 @@ When scanned with any Nepali banking app, the QR auto-populates the exact paymen
 - **QR Popup Modal** — QR code appears in a glassmorphism overlay with smooth slide-up animation
 - **Quick-Fill Presets** — One-tap service buttons (Consultation, Hydrafacial, PRP, etc.) auto-fill amount & remarks
 - **Horizontally Scrollable Presets** — Swipe-friendly preset row for mobile users
+- **Live Comma Formatting** — Amount input displays Indian/Nepali number system commas in real-time (e.g., `1,00,000`) for easy verification before generating QR
 - **Custom Remarks** — Optional transaction reference/note
 - **Modern UI** — Gradient backgrounds, glassmorphism, rounded cards, smooth animations
 - **Responsive** — Mobile-first, works on all screen sizes
@@ -39,9 +40,15 @@ When scanned with any Nepali banking app, the QR auto-populates the exact paymen
 final/
 ├── index.html                    # Vite HTML entry
 ├── package.json
+├── vercel.json                   # Vercel deployment config & SPA rewrites
+├── .npmrc                        # Peer-dependency resolution for Vite 8 + Tailwind
 ├── vite.config.js                # Vite + Tailwind plugin
 ├── public/
 │   └── favicon.svg
+├── documentation/                # Project documentation (case study)
+│   ├── index.html                # Engineering case study page
+│   ├── style.css                 # Documentation styles (dark/light theme)
+│   └── script.js                 # TOC, theme toggle & reading progress
 └── src/
     ├── main.jsx                  # React entry point
     ├── index.css                 # Tailwind imports + custom animations + modal styles
@@ -52,7 +59,7 @@ final/
     └── components/
         ├── Header.jsx            # Fonepay branded header
         ├── MerchantCard.jsx      # Merchant info card
-        ├── QRForm.jsx            # Amount, remarks & quick-fill presets
+        ├── QRForm.jsx            # Amount input with live comma formatting, remarks & quick-fill presets
         └── QRDisplay.jsx         # QR code display (rendered in modal)
 ```
 
@@ -113,6 +120,23 @@ The app builds an EMVCo-compliant string with these tags:
 ### CRC16-CCITT
 
 The checksum is calculated over the entire QR string (including the `6304` tag prefix) using the CRC-CCITT polynomial `0x1021` with initial value `0xFFFF`.
+
+### 🇳🇵 Indian/Nepali Number Formatting
+
+To prevent amount entry mistakes (e.g., confusing `100000` with `10000`), the amount input field applies **live comma formatting** using the South Asian (Indian/Nepali) numbering system — last 3 digits grouped first, then every 2 digits:
+
+| You Type   | Displays As     |
+| ---------- | --------------- |
+| `1000`     | **1,000**       |
+| `10000`    | **10,000**      |
+| `100000`   | **1,00,000**    |
+| `1000000`  | **10,00,000**   |
+| `10000000` | **1,00,00,000** |
+
+- The formatting happens **in real-time** as you type — no need to press Enter or click anything
+- The input uses `type="text"` with `inputMode="decimal"` so mobile devices still show the numeric keyboard
+- A `formatIndianNumber()` helper formats the display value, while the raw numeric value is preserved internally for accurate QR payload generation
+- Quick-fill preset buttons also display with proper formatting
 
 ---
 
