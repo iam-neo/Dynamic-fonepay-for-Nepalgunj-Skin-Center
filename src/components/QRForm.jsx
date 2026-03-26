@@ -1,8 +1,40 @@
 import { useState } from 'react';
 
+// Format number with Indian/Nepali comma system: 1,00,00,000
+function formatIndianNumber(num) {
+    if (!num) return '';
+    const parts = num.split('.');
+    let intPart = parts[0];
+    const decPart = parts.length > 1 ? '.' + parts[1] : '';
+
+    // Remove leading zeros (but keep at least one digit)
+    intPart = intPart.replace(/^0+(?=\d)/, '');
+
+    if (intPart.length <= 3) return intPart + decPart;
+
+    // Last 3 digits get one comma, then every 2 digits
+    const last3 = intPart.slice(-3);
+    const rest = intPart.slice(0, -3);
+    const formatted = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
+    return formatted + decPart;
+}
+
 export default function QRForm({ onGenerate }) {
-    const [amount, setAmount] = useState('');
+    const [amount, setAmount] = useState('');       // raw numeric string (no commas)
+    const [displayAmount, setDisplayAmount] = useState(''); // formatted with commas
     const [remarks, setRemarks] = useState('');
+
+    const handleAmountChange = (e) => {
+        // Strip everything except digits and decimal point
+        let raw = e.target.value.replace(/[^0-9.]/g, '');
+        // Prevent multiple decimal points
+        const dotIndex = raw.indexOf('.');
+        if (dotIndex !== -1) {
+            raw = raw.slice(0, dotIndex + 1) + raw.slice(dotIndex + 1).replace(/\./g, '');
+        }
+        setAmount(raw);
+        setDisplayAmount(formatIndianNumber(raw));
+    };
 
     const handleSubmit = () => {
         const parsed = parseFloat(amount);
@@ -23,12 +55,11 @@ export default function QRForm({ onGenerate }) {
                 <div className="relative flex items-center">
                     <span className="absolute left-5 text-white/40 font-bold text-lg pointer-events-none group-focus-within:text-rose-400 transition-colors">Rs.</span>
                     <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
+                        type="text"
+                        inputMode="decimal"
+                        value={displayAmount}
+                        onChange={handleAmountChange}
                         placeholder="0.00"
-                        min="1"
-                        step="0.01"
                         className="w-full pl-14 pr-5 py-4 border border-white/10 rounded-xl text-xl font-bold bg-black/40 text-white
                        placeholder-white/20 outline-none
                        focus:border-rose-500/50 focus:bg-black/60 focus:shadow-[0_0_20px_rgba(225,29,72,0.2)]
@@ -74,7 +105,9 @@ export default function QRForm({ onGenerate }) {
                             key={preset.label}
                             type="button"
                             onClick={() => {
-                                setAmount(String(preset.amount));
+                                const raw = String(preset.amount);
+                                setAmount(raw);
+                                setDisplayAmount(formatIndianNumber(raw));
                                 setRemarks(preset.remarks);
                             }}
                             className={`px-3.5 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0
