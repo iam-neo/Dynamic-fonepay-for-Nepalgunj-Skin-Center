@@ -72,8 +72,11 @@
                     <li><a href="#emvco-protocol">3. Decoding the EMVCo Protocol</a></li>
                     <li><a href="#crc16-algorithm">4. Checksum Geometry (CRC16)</a></li>
                     <li><a href="#ui-redesign">5. The Glassmorphism Redesign</a></li>
-                    <li><a href="#deployment">6. Continuous Deployment</a></li>
-                    <li><a href="#how-it-works">7. How the Code Works</a></li>
+                    <li><a href="#qr-modal">6. QR Popup Modal</a></li>
+                    <li><a href="#quick-fill">7. Quick-Fill Presets</a></li>
+                    <li><a href="#smart-formatting">8. Smart Amount Formatting</a></li>
+                    <li><a href="#deployment">9. Continuous Deployment</a></li>
+                    <li><a href="#how-it-works">10. How the Code Works</a></li>
                 </ul>
             </div>
         </aside>
@@ -95,40 +98,98 @@
                 <p>We completely migrated the legacy single-file HTML version to a modern Single Page Application (SPA)
                     architecture:</p>
                 <ul>
-                    <li><strong>Framework:</strong> React 18 for component-based logic and state management.</li>
+                    <li><strong>Framework:</strong> React 19 for component-based logic and state management.</li>
                     <li><strong>Build Tool:</strong> Vite 8, chosen for lightning-fast Hot Module Replacement (HMR) and
                         optimized build times.</li>
                     <li><strong>Styling:</strong> Tailwind CSS v4, allowing us to build a rich, complex glassmorphism UI
                         entirely with utility classes.</li>
                     <li><strong>QR Generation:</strong> <code>qrcode.react</code> to handle high-error-correction canvas
                         drawing, allowing us to embed the company logo perfectly in the center.</li>
+                    <li><strong>Typography:</strong> Inter (Google Fonts) for clean, modern, highly legible text across
+                        all screen sizes.</li>
+                    <li><strong>Deployment:</strong> Vercel edge network with immutable asset caching and SPA rewrites.
+                    </li>
                 </ul>
             </section>
 
             <section id="emvco-protocol">
                 <h2>3. Decoding the EMVCo Protocol</h2>
                 <p>Fonepay utilizes the EMVCo QR code specification. The payload is structured as a series of
-                    <strong>Tag-Length-Value (TLV)</strong> nodes.
+                    <strong>Tag-Length-Value (TLV)</strong> nodes. Our generator constructs the following tags:
                 </p>
-                <div class="code-block">
+
+                <div class="code-block" style="margin-top: 1rem;">
                     <div class="code-header">
                         <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-                        <span class="code-title">generateQRString.js (Snippet)</span>
+                        <span class="code-title">EMVCo Tag Map</span>
                     </div>
-                    <pre><code class="language-js">
-// Tag 54 represents the Transaction Amount
-const formatTag = (id, value) => {
-    const len = value.length.toString().padStart(2, '0');
-    return `${id}${len}${value}`;
-};
-
-// Generating the dynamic part of the payload
-let amountStr = formatTag("54", amount.toFixed(2));
+                    <pre><code class="language-txt" style="color: var(--text-color);">
+  Tag   Field                        Value
+  ────  ───────────────────────────   ──────────────────────────
+  00    Payload Format Indicator      01 (version 1)
+  01    Point of Initiation           12 (Dynamic — enables auto-fill)
+  26    FonePay Merchant Data         fonepay.com + Merchant Code + Terminal
+  37    Merchant Identifier           9105240052044
+  52    Merchant Category Code        8012
+  53    Currency Code                 524 (NPR)
+  54    Transaction Amount            ← User input (e.g., 500.00)
+  58    Country Code                  NP
+  59    Merchant Name                 NEPALGUNJ SKIN CENTER
+  60    Merchant City                 Banke
+  62    Additional Data               Terminal ID + TxnID + Remarks
+  63    CRC Checksum                  CRC16-CCITT (4-char HEX)
                     </code></pre>
                 </div>
-                <p>To inject the amount dynamically, we dissect the static string, remove any existing Tag 54 nodes,
-                    construct a new Tag 54 using the user's target amount (e.g., <code>540510.00</code>), and inject it
-                    right before Tag 63 (the Checksum tag).</p>
+
+                <div class="code-block" style="margin-top: 1.5rem;">
+                    <div class="code-header">
+                        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                        <span class="code-title">generateQRString.js — Tag Construction</span>
+                    </div>
+                    <pre><code class="language-js">
+export function generateQRString(amount, remarks = 'Payment') {
+    let qr = '000201';           // Payload Format Indicator
+    qr += '010212';              // Dynamic (not 010211 Static)
+    qr += '37139105240052044';   // Merchant Identifier
+
+    // Tag 26: FonePay merchant data block
+    qr += '26390011fonepay.com011021090206640206497140';
+
+    qr += '52048012';            // Category Code
+    qr += '5303524';             // Currency: NPR
+
+    // Tag 54: Transaction Amount (enables auto-fill in banking apps)
+    const amtStr = amount.toFixed(2);
+    qr += '54' + amtStr.length.toString().padStart(2, '0') + amtStr;
+
+    qr += '5802NP';              // Country
+    qr += '5921NEPALGUNJ SKIN CENTER'; // Merchant Name
+    qr += '6005Banke';           // City
+
+    // Tag 62: Additional Data (Terminal + TxnID + Remarks)
+    const txnId = 'TXN' + Date.now().toString().slice(-6);
+    ...
+    // Tag 63: CRC16-CCITT checksum
+    qr += '6304';
+    const crc = crc16(qr);
+    qr += crc;
+
+    return { qrString: qr, amtStr, crc, txnId };
+}
+                    </code></pre>
+                </div>
+
+                <div class="info-alert" style="margin-top: 1.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <strong>Critical:</strong> Tag <code>01</code> must be <code>12</code> (Dynamic), not
+                    <code>11</code> (Static). Without this, banking apps will ignore the amount tag entirely and
+                    require manual entry.
+                </div>
             </section>
 
             <section id="crc16-algorithm">
@@ -139,6 +200,30 @@ let amountStr = formatTag("54", amount.toFixed(2));
                 <p>We wrote a robust, zero-dependency CRC16-CCITT algorithm in JavaScript to handle this dynamically on
                     the client side:</p>
 
+                <div class="code-block" style="margin-top: 1rem;">
+                    <div class="code-header">
+                        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                        <span class="code-title">crc16.js — Complete Implementation</span>
+                    </div>
+                    <pre><code class="language-js">
+export function crc16(str) {
+    let crc = 0xffff;
+    for (let i = 0; i &lt; str.length; i++) {
+        crc ^= str.charCodeAt(i) &lt;&lt; 8;
+        for (let j = 0; j &lt; 8; j++) {
+            crc = crc &amp; 0x8000
+                ? (crc &lt;&lt; 1) ^ 0x1021
+                : crc &lt;&lt; 1;
+        }
+    }
+    return (crc &amp; 0xffff)
+        .toString(16)
+        .toUpperCase()
+        .padStart(4, '0');
+}
+                    </code></pre>
+                </div>
+
                 <div class="info-alert">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -146,8 +231,9 @@ let amountStr = formatTag("54", amount.toFixed(2));
                         <line x1="12" y1="16" x2="12" y2="12"></line>
                         <line x1="12" y1="8" x2="12.01" y2="8"></line>
                     </svg>
-                    <strong>Polynomial 0x1021:</strong> The algorithm seeds with <code>0xffff</code> and XORs each byte,
-                    shifting 8 bits at a time through the standard CCITT polynomial.
+                    <strong>Polynomial 0x1021:</strong> The algorithm seeds with <code>0xFFFF</code>, XORs each byte
+                    shifted left by 8, and iterates 8 bits per character through the standard CCITT polynomial —
+                    producing a 4-digit HEX string appended as Tag 63.
                 </div>
             </section>
 
@@ -159,32 +245,237 @@ let amountStr = formatTag("54", amount.toFixed(2));
                     <div class="feature-card">
                         <h3>Animated Mesh Gradient</h3>
                         <p>We layered blurred nodes of rose and indigo over a deep dark background using CSS
-                            <code>mix-blend-mode: screen</code> to create a glowing web application layer.
+                            <code>mix-blend-mode: screen</code> to create a glowing web application layer. The gradient
+                            cycles through four colors (<code>#09090b</code>, <code>#1e1b4b</code>,
+                            <code>#4c0519</code>, <code>#0f172a</code>) with a smooth 15-second infinite animation.
                         </p>
                     </div>
                     <div class="feature-card">
                         <h3>Translucent Components</h3>
                         <p>Using Tailwind's <code>backdrop-blur-2xl</code> and <code>bg-white/5</code>, our forms and
-                            cards look like frosted glass floating over the animated background.</p>
+                            cards look like frosted glass floating over the animated background. The main card features
+                            a rounded 2rem border and a hover glow effect using rose-tinted box shadows.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Glow Effects &amp; Typography</h3>
+                        <p>Custom <code>.text-glow</code> and <code>.text-glow-accent</code> utility classes apply
+                            CSS <code>text-shadow</code> to the Fonepay branding, creating a neon glow effect. The
+                            header includes Nepali text (नेपाल राष्ट्र बैंकबाट अनुमति प्राप्त) with decorative
+                            rose accent lines.</p>
                     </div>
                 </div>
             </section>
 
+            <section id="qr-modal">
+                <h2>6. QR Popup Modal</h2>
+                <p>Initially, the generated QR code appeared inline below the form, pushing content downward and
+                    disrupting the layout. We replaced this with a <strong>glassmorphism popup modal</strong> that
+                    elegantly overlays the entire screen.</p>
+
+                <div class="image-gallery">
+                    <div class="feature-card">
+                        <h3>Backdrop Blur Overlay</h3>
+                        <p>The modal overlay uses <code>backdrop-filter: blur(12px)</code> over a dark semi-transparent
+                            background (<code>rgba(0, 0, 0, 0.7)</code>), creating a cinematic depth-of-field effect.
+                            Clicking anywhere outside the modal closes it instantly.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Slide-Up Animation</h3>
+                        <p>The QR card enters with a custom <code>modalSlideUp</code> keyframe animation — translating
+                            40px upward while fading in and scaling from 0.95 to 1.0 using a
+                            <code>cubic-bezier(0.16, 1, 0.3, 1)</code> easing curve for a springy feel.
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Close Button</h3>
+                        <p>A circular close button sits in the top-right corner with a subtle border and glass
+                            background. On hover, it transitions to a rose-tinted glow with
+                            <code>scale(1.1)</code> for tactile feedback.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="code-block" style="margin-top: 1.5rem;">
+                    <div class="code-header">
+                        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                        <span class="code-title">index.css — Modal Animation Keyframes</span>
+                    </div>
+                    <pre><code class="language-css">
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.qr-modal-content {
+    background: rgba(15, 15, 25, 0.85);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1.5rem;
+    box-shadow: 0 0 60px rgba(225, 29, 72, 0.15),
+                0 25px 50px rgba(0, 0, 0, 0.5);
+    animation: modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+                    </code></pre>
+                </div>
+            </section>
+
+            <section id="quick-fill">
+                <h2>7. Quick-Fill Presets</h2>
+                <p>For a clinic environment where the same services are billed repeatedly, manually typing amounts
+                    is slow and error-prone. We solved this with <strong>one-tap quick-fill preset buttons</strong>.</p>
+
+                <div class="code-block" style="margin-top: 1rem;">
+                    <div class="code-header">
+                        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                        <span class="code-title">Service Presets</span>
+                    </div>
+                    <pre><code class="language-txt" style="color: var(--text-color);">
+  Button          Amount     Remarks
+  ──────────────  ─────────  ──────────────────────────
+  Consultation    Rs. 500    Consultation Fee
+  B.Hydra         Rs. 3,000  Basic Hydrafacial
+  P.Hydra         Rs. 5,000  Professional Hydrafacial
+  D.Hydra         Rs. 6,500  Delux Hydrafacial
+  C.Peel          Rs. 2,500  Chemical Peel
+  PRP             Rs. 5,000  Vampire Facial
+  GFC             Rs. 6,000  GFC Therapy
+  Carbon          Rs. 3,500  Carbon Laser Peel
+                    </code></pre>
+                </div>
+
+                <p style="margin-top: 1rem;">Each preset button simultaneously fills both the
+                    <strong>amount</strong> and <strong>remarks</strong> fields. The selected preset is highlighted
+                    with a rose glow (<code>shadow-[0_0_12px_rgba(225,29,72,0.25)]</code>). The preset row is
+                    <strong>horizontally scrollable</strong> on mobile devices with hidden scrollbars and touch
+                    momentum scrolling for a native app-like feel.
+                </p>
+            </section>
+
+            <section id="smart-formatting">
+                <h2>8. Smart Amount Formatting</h2>
+                <p>One common real-world problem in payment terminals is <strong>amount entry mistakes</strong>. When
+                    typing large numbers like <code>100000</code>, it's difficult to visually confirm whether you typed
+                    one lakh or ten thousand.</p>
+                <p>We solved this by implementing <strong>live Indian/Nepali number formatting</strong> directly inside
+                    the amount input field. As the operator types, the digits are automatically formatted with commas
+                    following the South Asian numbering system:</p>
+
+                <div class="code-block" style="margin-top: 1rem;">
+                    <div class="code-header">
+                        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                        <span class="code-title">Live Formatting Examples</span>
+                    </div>
+                    <pre><code class="language-txt" style="color: var(--text-color);">
+  Typed         Displayed
+  ──────────    ─────────────
+  1000      →   1,000
+  10000     →   10,000
+  100000    →   1,00,000
+  1000000   →   10,00,000
+  10000000  →   1,00,00,000
+                    </code></pre>
+                </div>
+
+                <div class="code-block" style="margin-top: 1.5rem;">
+                    <div class="code-header">
+                        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                        <span class="code-title">QRForm.jsx — formatIndianNumber()</span>
+                    </div>
+                    <pre><code class="language-js">
+function formatIndianNumber(num) {
+    if (!num) return '';
+    const parts = num.split('.');
+    let intPart = parts[0];
+    const decPart = parts.length &gt; 1 ? '.' + parts[1] : '';
+
+    intPart = intPart.replace(/^0+(?=\d)/, '');  // strip leading zeros
+
+    if (intPart.length &lt;= 3) return intPart + decPart;
+
+    // Last 3 digits get one comma, then every 2 digits
+    const last3 = intPart.slice(-3);
+    const rest  = intPart.slice(0, -3);
+    const formatted = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',')
+                         + ',' + last3;
+    return formatted + decPart;
+}
+                    </code></pre>
+                </div>
+
+                <div class="info-alert" style="margin-top: 1.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <strong>Dual-State Architecture:</strong> The input uses <code>type="text"</code> with
+                    <code>inputMode="decimal"</code> (mobile numeric keyboard). Two separate React state values
+                    are maintained — <code>displayAmount</code> (formatted with commas for the UI) and
+                    <code>amount</code> (raw digits for QR generation). This ensures visual clarity without
+                    corrupting the numeric payload.
+                </div>
+            </section>
+
             <section id="deployment">
-                <h2>6. Continuous Deployment</h2>
-                <p>We mapped the project specifically for <strong>Vercel</strong> edge deployments. By using Vite and
-                    defining client-side routing rewrites inside <code>vercel.json</code>, the site instantly goes live
-                    whenever code is pushed to the GitHub <code>master</code> branch.</p>
-                <p>We also implemented an <code>.npmrc</code> configuration to bypass strict peer dependency checks
-                    between Vite 8 and Tailwind ecosystem tools, ensuring robust remote builds.</p>
+                <h2>9. Continuous Deployment</h2>
+                <p>We mapped the project specifically for <strong>Vercel</strong> edge deployments. The site instantly
+                    goes live whenever code is pushed to the GitHub <code>master</code> branch.</p>
+
+                <div class="code-block" style="margin-top: 1rem;">
+                    <div class="code-header">
+                        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                        <span class="code-title">vercel.json — SPA Rewrites &amp; Asset Caching</span>
+                    </div>
+                    <pre><code class="language-json">
+{
+    "rewrites": [
+        { "source": "/(.*)", "destination": "/index.html" }
+    ],
+    "headers": [
+        {
+            "source": "/assets/(.*)",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=31536000, immutable"
+                }
+            ]
+        }
+    ]
+}
+                    </code></pre>
+                </div>
+
+                <p style="margin-top: 1rem;">The <strong>rewrite rule</strong> ensures all client-side routes resolve
+                    to <code>index.html</code> (SPA fallback). The <strong>cache header</strong> sets a 1-year
+                    immutable cache on Vite's hashed assets in <code>/assets/</code> for optimal CDN performance.</p>
+
+                <div class="info-alert" style="margin-top: 1.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <strong>.npmrc:</strong> We configured <code>legacy-peer-deps=true</code> to bypass strict peer
+                    dependency checks between Vite 8 and Tailwind CSS v4 ecosystem tools, ensuring reliable remote
+                    builds on Vercel's CI pipeline.
+                </div>
             </section>
 
             <section id="how-it-works">
-                <h2>7. How the Code Works</h2>
+                <h2>10. How the Code Works</h2>
                 <p>The application is built on a modular React architecture that strictly separates presentation from
-                    complex EMVCo payment logic. Here is the lifecycle of a QR code generation within our app:</p>
+                    complex EMVCo payment logic. Here is the complete lifecycle of a QR code generation:</p>
 
-                <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--primary);">Data Flow & Component
+                <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--primary);">Data Flow &amp; Component
                     Architecture</h3>
 
                 <div class="code-block" style="margin-top: 1rem;">
@@ -193,36 +484,43 @@ let amountStr = formatTag("54", amount.toFixed(2));
                         <span class="code-title">Component Tree</span>
                     </div>
                     <pre><code class="language-txt" style="color: var(--text-color);">
-App.jsx (Main Container & State Holder)
- ├── Header.jsx (Static text & Logos)
- ├── MerchantCard.jsx (Merchant Name & Terminal Details)
- ├── QRForm.jsx (User Inputs)
- │    └── Triggers onGenerate(amount, remarks)
- └── QRDisplay.jsx (QR Canvas & Data Viewer)
-      ├── Renders <QRCodeCanvas />
-      └── Displays raw string, Amount Tag, Checksum
+App.jsx (Root — State: qrData, showModal)
+ ├── Header.jsx
+ │    └── "fonepay" branding + NRB Nepali authorization text
+ ├── MerchantCard.jsx
+ │    └── Nepalgunj Skin Center | Code: 2109020664 | Terminal: 497140
+ ├── QRForm.jsx
+ │    ├── Amount Input (live Indian/Nepali comma formatting)
+ │    ├── Remarks Input (optional)
+ │    ├── Quick-Fill Presets (8 service buttons)
+ │    └── Generate Button → triggers onGenerate(amount, remarks)
+ └── QR Modal Popup (glassmorphism overlay)
+      └── QRDisplay.jsx
+           ├── &lt;QRCodeCanvas /&gt; with logo overlay (Level-H error correction)
+           └── "Amount auto-populates in banking app" confirmation
                     </code></pre>
                 </div>
 
                 <ul>
-                    <li><strong>1. State Management (<code>App.jsx</code>)</strong>: The root component holds a single
-                        state variable: <code>qrData</code>. When a user interacts with the generator,
-                        <code>App.jsx</code> passes the updated payload down to the display component.</li>
-                    <li><strong>2. User Input (<code>QRForm.jsx</code>)</strong>: This component handles controlled
-                        inputs for the payment amount and optional remarks. Upon submission, it sanitizes the number and
-                        triggers an <code>onGenerate</code> callback function passed from the parent
-                        <code>App.jsx</code>.</li>
-                    <li><strong>3. Payload Generation (<code>utils/generateQRString.js</code>)</strong>: This is the
-                        brain of the app. It takes the float amount and remarks, constructs missing TLV tags (Tag 54 for
-                        Amount, Tag 08 for Remarks), and splices them into the massive static EMVCo string.</li>
+                    <li><strong>1. State Management (<code>App.jsx</code>)</strong>: The root component holds two state
+                        variables — <code>qrData</code> (the generated payload) and <code>showModal</code> (popup
+                        visibility). When the user generates a QR, both are updated simultaneously.</li>
+                    <li><strong>2. User Input (<code>QRForm.jsx</code>)</strong>: This component manages three pieces
+                        of state — raw amount, display amount (with Indian commas), and remarks. It sanitizes input to
+                        allow only digits and a single decimal point. Quick-fill presets auto-populate both fields.</li>
+                    <li><strong>3. Payload Generation (<code>utils/generateQRString.js</code>)</strong>: The brain of
+                        the app. It takes the float amount and remarks, constructs all 12+ TLV tags in sequence,
+                        generates
+                        a unique transaction ID (<code>TXN</code> + last 6 digits of timestamp), and builds the
+                        complete EMVCo string.</li>
                     <li><strong>4. Checksum Calculation (<code>utils/crc16.js</code>)</strong>: Before the final string
-                        is returned, the app passes the newly constructed string (minus the final checksum) through our
-                        custom CRC16-CCITT algorithm to generate a mathematically sound 4-digit Hex verification
-                        signature.</li>
-                    <li><strong>5. Rendering (<code>QRDisplay.jsx</code>)</strong>: Finally, the new <code>qrData</code>
-                        object is passed into <code>QRDisplay</code>. We use <code>qrcode.react</code> to draw a Level-H
-                        (High Error Correction) canvas, which is dense enough to allow us to safely overlay the
-                        `logo.png` image directly over the center data modules without breaking scannability.</li>
+                        is returned, it passes through the CRC16-CCITT algorithm to generate a mathematically sound
+                        4-digit Hex verification signature appended as Tag 63.</li>
+                    <li><strong>5. Modal Display (<code>App.jsx</code> + <code>QRDisplay.jsx</code>)</strong>: The
+                        generated <code>qrData</code> triggers a glassmorphism overlay modal. Inside,
+                        <code>QRDisplay</code> renders a Level-H <code>&lt;QRCodeCanvas&gt;</code> (220px, with logo
+                        excavation) and a green confirmation badge.
+                    </li>
                 </ul>
             </section>
 
