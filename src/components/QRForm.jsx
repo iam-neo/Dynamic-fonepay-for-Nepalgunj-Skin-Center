@@ -23,6 +23,22 @@ export default function QRForm({ onGenerate }) {
     const [amount, setAmount] = useState('');       // raw numeric string (no commas)
     const [displayAmount, setDisplayAmount] = useState(''); // formatted with commas
     const [remarks, setRemarks] = useState('');
+    const [discountType, setDiscountType] = useState('none'); // 'none', 'percent', 'amount'
+    const [discountValue, setDiscountValue] = useState('');
+
+    const calculateFinalAmount = () => {
+        const baseAmount = parseFloat(amount) || 0;
+        if (!baseAmount) return 0;
+        
+        let finalAmount = baseAmount;
+        if (discountType === 'percent' && discountValue) {
+            finalAmount = baseAmount - (baseAmount * (parseFloat(discountValue) / 100));
+        } else if (discountType === 'amount' && discountValue) {
+            finalAmount = baseAmount - parseFloat(discountValue);
+        }
+        
+        return Math.max(0, finalAmount);
+    };
 
     const handleAmountChange = (e) => {
         // Strip everything except digits and decimal point
@@ -37,12 +53,28 @@ export default function QRForm({ onGenerate }) {
     };
 
     const handleSubmit = () => {
-        const parsed = parseFloat(amount);
-        if (!parsed || parsed <= 0) {
+        const baseAmount = parseFloat(amount);
+        if (!baseAmount || baseAmount <= 0) {
             alert('Please enter a valid amount');
             return;
         }
-        onGenerate(parsed, remarks || 'Payment');
+        
+        const finalAmount = calculateFinalAmount();
+        if (finalAmount <= 0) {
+            alert('Final amount after discount cannot be 0 or less');
+            return;
+        }
+
+        let finalRemarks = remarks || 'Payment';
+        
+        // Append discount info if applied
+        if (discountType === 'percent' && discountValue) {
+            finalRemarks += ` [${discountValue}% Off]`;
+        } else if (discountType === 'amount' && discountValue) {
+            finalRemarks += ` [Rs ${discountValue} Off]`;
+        }
+
+        onGenerate(finalAmount, finalRemarks);
     };
 
     return (
@@ -66,6 +98,67 @@ export default function QRForm({ onGenerate }) {
                        transition-all duration-300"
                     />
                 </div>
+            </div>
+
+            {/* Discount Section */}
+            <div className="space-y-3">
+                <label className="block mb-2 text-rose-200/70 font-bold text-[0.65rem] uppercase tracking-[0.15em]">
+                    Discount (Optional)
+                </label>
+                <div className="flex gap-2 p-1 bg-black/40 border border-white/10 rounded-xl relative z-20">
+                    {[
+                        { id: 'none', label: 'None' },
+                        { id: 'percent', label: '% Percent' },
+                        { id: 'amount', label: 'Rs Flat' }
+                    ].map((type) => (
+                        <button
+                            key={type.id}
+                            type="button"
+                            onClick={() => {
+                                setDiscountType(type.id);
+                                if (type.id === 'none') setDiscountValue('');
+                            }}
+                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-300 cursor-pointer ${
+                                discountType === type.id
+                                    ? 'bg-rose-500/80 text-white shadow-md'
+                                    : 'text-white/50 hover:bg-white/5 hover:text-white/90'
+                            }`}
+                        >
+                            {type.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Conditional Discount Input */}
+                {discountType !== 'none' && (
+                    <div className="relative flex items-center animate-fade-in mt-3">
+                        <span className="absolute left-5 text-white/40 font-bold text-lg pointer-events-none">
+                            {discountType === 'percent' ? '%' : 'Rs.'}
+                        </span>
+                        <input
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            value={discountValue}
+                            onChange={(e) => setDiscountValue(e.target.value)}
+                            placeholder={discountType === 'percent' ? "e.g., 20" : "e.g., 500"}
+                            className="w-full pl-14 pr-5 py-3 border border-rose-500/30 rounded-xl text-lg font-bold bg-black/40 text-white
+                                     placeholder-white/20 outline-none
+                                     focus:border-rose-500 focus:bg-black/60 focus:shadow-[0_0_15px_rgba(225,29,72,0.3)]
+                                     transition-all duration-300"
+                        />
+                    </div>
+                )}
+                
+                {/* Final Amount Display Indicator */}
+                {discountType !== 'none' && parseFloat(amount) > 0 && discountValue && (
+                    <div className="p-4 mt-3 rounded-xl bg-gradient-to-r from-rose-500/10 to-transparent border-l-4 border-rose-500 flex justify-between items-center text-sm animate-fade-in">
+                        <span className="text-white/70 font-medium">Final Amount:</span>
+                        <span className="text-xl font-bold text-rose-300 tracking-wide glow-text">
+                            Rs. {formatIndianNumber(calculateFinalAmount().toString())}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Remarks Input */}
